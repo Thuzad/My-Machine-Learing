@@ -39,7 +39,6 @@ def chooseBestFeatureToSplit(dataSet):
 	bestFeature = -1
 	for i in range(numFeatures):
 		featList = [example[i] for example in dataSet]
-		print featList
 		uniqueVals = set(featList)
 		newEntropy = 0.0
 		for value in uniqueVals:
@@ -67,3 +66,13 @@ def createTree(dataSet, labels):
 		return classList[0]
 	if len(dataSet[0]) == 1:
 		return majorityCnt(classList)
+	bestFeat = chooseBestFeatureToSplit(dataSet)
+	bestFeatLabel = labels[bestFeat]
+	myTree = {bestFeatLabel:{}}
+	del(labels[bestFeat])
+	featValues = [example[bestFeat] for example in dataSet]
+	uniqueVals = set(featValues)
+	for value in uniqueVals:
+		subLabels = labels[:]
+		myTree[bestFeatLabel][value] = createTree(splitDataSet(dataSet, bestFeat, value), subLabels)
+	return myTree
