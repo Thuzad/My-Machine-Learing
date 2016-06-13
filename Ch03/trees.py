@@ -85,5 +85,16 @@ def classify(inputTree, featLabels, testVec):
 		if testVec[featIndex] == key:
 			if type(secondDict[key]).__name__=='dict':
 				classLabel = classify(secondDict[key], featLabels, testVec)
-		else:	classLabel = secondDict[key]
+			else:	classLabel = secondDict[key]
 	return classLabel
+
+def storeTree(inputTree, filename):
+	import pickle
+	fw = open(filename,'w')
+	pickle.dump(inputTree,fw)
+	fw.close()
+
+def grabTree(filename):
+	import pickle
+	fr = open(filename)
+	return pickle.load(fr)
