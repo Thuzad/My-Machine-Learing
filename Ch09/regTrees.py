@@ -10,8 +10,8 @@ def loadDataSet(fileName):
 	return dataMat
 
 def binSplitDataSet(dataSet, feature, value):
-	mat0 = dataSet[nonzero(dataSet[:,feature] > value)[0],:][0]
-	mat1 = dataSet[nonzero(dataSet[:,feature] <= value)[0],:][0]
+	mat0 = dataSet[nonzero(dataSet[:,feature] > value)[0],:]
+	mat1 = dataSet[nonzero(dataSet[:,feature] <= value)[0],:]
 	return mat0, mat1
 
 def regLeaf(dataSet):
@@ -26,13 +26,12 @@ def chooseBestSplit(dataSet, leafType = regLeaf, errType = regErr, ops = (1, 4))
 		return None, leafType(dataSet)
 	m, n = shape(dataSet)
 	S = errType(dataSet)
-	beatS = inf; bestIndex = 0; bestValue = 0
+	bestS = inf; bestIndex = 0; bestValue = 0
+	dataSetList = dataSet.tolist()
 	for featIndex in range(n - 1):
-		featValues = [example[featIndex] for example in dataSet]
-		print featValues
+		featValues = [example[featIndex] for example in dataSetList]
 		uniqueVals = set(featValues)
 		for splitVal in uniqueVals:
-			print splitVal
 			mat0, mat1 = binSplitDataSet(dataSet, featIndex, splitVal)
 			if(shape(mat0)[0] < tolN) or (shape(mat1[0]) < tolN): continue
 			newS = errType(mat0) + errType(mat1)
@@ -40,7 +39,7 @@ def chooseBestSplit(dataSet, leafType = regLeaf, errType = regErr, ops = (1, 4))
 				bestIndex = featIndex
 				bestValue = splitVal
 				bestS = newS
-	if (S - beatS) < tolS:
+	if (S - bestS) < tolS:
 		return None, leafType(dataSet)
 	mat0, mat1 = binSplitDataSet(dataSet, bestIndex, bestValue)
 	if(shape(mat0)[0] < tolN) or (shape(mat1)[0] < tolN):
@@ -54,6 +53,32 @@ def createTree(dataSet, leafType = regLeaf, errType = regErr, ops = (1, 4)):
 	retTree['spInd'] = feat
 	retTree['spVal'] = val
 	lSet, rSet = binSplitDataSet(dataSet, feat, val)
-	retTre['left'] = createTree(lSet, leafType, errType, ops)
+	retTree['left'] = createTree(lSet, leafType, errType, ops)
 	retTree['right'] = createTree(rSet, leafType, errType, ops)
 	return retTree
+
+def isTree(obj):
+	return (type(obj).__name__=='dict')
+
+def getMean(tree):
+	if isTree(tree['right']): tree['right'] = getMean(tree['right'])
+	if isTree(tree['left']): tree['left'] = getMean(tree['left'])
+	return (tree['left'] + tree['right']) / 2.0
+
+def prune(tree, testData):
+	if shape(teestData)[0] == 0: return getMean(tree)
+	if(isTree(tree['left']) or isTree(tree['left'])):
+		lSet, rSet = binSplitDataSet(testData, tree['spInd'], tree['spVal'])
+	if isTree(tree['left']): tree['left'] = prune(tree['left'], lSet)
+	if isTree(tree['right']): tree['right'] = prune(tree['right'], rSet)
+	if not isTree(tree['left']) and not isTree(tree['right']):
+		lSet, rSet = binSplitDataSet(testData, tree['spInd'], tree['spVal'])
+		errorNoMerge = sum(power(lSet[:,-1] - tree['left'],2)) + sum(power(rSet[:,-1] - tree['right'], 2))
+		treeMean = (tree['left'] + tree['right']) / 2.0
+		errorMerge = sum(power(testData[:,-1] - treeMean, 2))
+		if errorMerge < errorNoMerge:
+			print "merging"
+			return treeMean
+		else: return tree
+	else: return tree
+		
