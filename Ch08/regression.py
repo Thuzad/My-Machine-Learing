@@ -1,4 +1,7 @@
 from numpy import *
+from time import sleep
+import json
+import urllib2
 
 def loadDataSet(fileName):
 	numFeat = len(open(fileName).readline().split('\t')) - 1
@@ -68,3 +71,63 @@ def ridgeTest(xArr, yArr):
 		ws = ridgeRegres(xMat, yMat, exp(i - 10))
 		wMat[i,:] = ws.T
 	return wMat
+
+def regularize(xMat):
+	inMat = xMat.copy()
+	inMeans = mean(inMat, 0)
+	inVar = var(inMat, 0)
+	inMat = (inMat - inMeans) / inVar
+	return inMat
+
+def stageWise(xArr, yArr, eps = 0.01, numIt = 100):
+	xMat = mat(xArr); yMat = mat(yArr).T
+	yMean = mean(yMat, 0)
+	yMat = yMat - yMean
+	xMat = regularize(xMat)
+	m, n = shape(xMat)
+	returnMat = zeros((numIt, n))
+	ws = zeros((n ,1)); wsTest = ws.copy(); wsMax = ws.copy()
+	for i in range(numIt):
+		print ws.T
+		lowestError = inf;
+		for j in range(n):
+			for sign in [-1, 1]:
+				wsTest = ws.copy()
+				wsTest[j] += eps * sign
+				yTest = xMat * wsTest
+				rssE = rssError(yMat.A, yTest.A)
+				if rssE < lowestError:
+					lowestError = rssE
+					wsMax = wsTest
+		ws = wsMax.copy()
+		returnMat[i,:] = ws.T
+	return returnMat
+
+def searchForSet(retX, retY, setNum, yr, numPce, origPrc):
+	sleep(10)
+	myAPIstr = 'AIzaSyD2cR2KFyx12hXu6PFU-wrWot3NXvko8vY'
+	searchURL = 'https://www.googleapis.com/shopping/search/v1/public/products?key=%s&country=US&q=lego+%d&alt=json' % (myAPIstr, setNum)
+	pg = urllib2.urlopen(searchURL)
+	retDict = json.loads(pg.read())
+	for i in range(len(retDict['items'])):
+		try:
+			currItem = retDict['item'][i]
+			if currItem['product']['condiction'] =='new':
+				newFlag = 1
+			else: newFlag = 0
+			listOfInv = currItem['product']['inventories']
+			for item in listOfInv:
+				sellingPrice = item['price']
+				if sellingPrice > origPrc * 0.5:
+					print "%d\t%d\t%d\t%f\t%f" % (yr.numPce, newFlaag, origPrc, sellingPrice)
+					retX.append([yr, numPce, newFlag, origPrc])
+					retY.append(sellingPrice)
+		except: print 'problem with item %d' % i
+
+def setDataCollect(retX, retY):
+	#searchForSet(retX, retY, 8288, 2006, 800, 49.99)
+	#searchForSet(retX, retY, 10030, 2002, 3096, 269.99)
+	#searchForSet(retX, retY, 10179, 2007, 5195, 499.99)
+	#searchForSet(retX, retY, 10181, 2007, 3428, 199.99)
+	#searchForSet(retX, retY, 10189, 2008, 5922, 299.99)
+	searchForSet(retX, retY, 10196, 2009, 3262, 249.99)
