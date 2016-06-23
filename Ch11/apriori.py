@@ -38,7 +38,7 @@ def aprioriGen(LK, k):
 				retList.append(LK[i] | LK[j])
 	return retList
 
-def qpriori(dataSet, minSupport = 0.5):
+def apriori(dataSet, minSupport = 0.5):
 	C1 = createC1(dataSet)
 	D = map(set, dataSet)
 	L1, supportData = scanD(D, C1, minSupport)
@@ -46,8 +46,55 @@ def qpriori(dataSet, minSupport = 0.5):
 	k = 2
 	while (len(L[k - 2]) > 0):
 		Ck = aprioriGen(L[k - 2], k)
-		LK, supK = scnaD(D, Ck, minSupport)
+		LK, supK = scanD(D, Ck, minSupport)
 		supportData.update(supK)
 		L.append(LK)
 		k += 1
 	return L, supportData
+
+def generateRules(L, supportData, minConf):
+	bigRuleList = []
+	for i in range(1, len(L)):
+		for freqSet in L[i]:
+			H1 = [frozenset([item]) for item in freqSet]
+			if(i > 1):
+				rulesFromConseq(freqSet, H1, supportData, bigRuleList, minConf)
+			else:
+				calcConf(freqSet, H1, supportData, bigRuleList, minConf)
+	return bigRuleList
+
+def calcConf(freqSet, H, supportData, brl, minConf = 0.7):
+	prunedH = []
+	for conseq in H:
+		conf = supportData[freqSet] / supportData[freqSet - conseq]
+		if conf >= minConf:
+			print freqSet - conseq, '-->', conseq, 'conf: ', conf
+			brl.append((freqSet - conseq, conseq, conf))
+			prunedH.append(conseq)
+	return prunedH
+
+def rulesFromConseq(freqSet, H, supportData, brl, minConf = 0.7):
+	m = len(H[0])
+	if (len(freqSet) > (m + 1)):
+		Hmp1 = aprioriGen(H, m + 1)
+		Hmp1 = calcConf(freqSet, Hmp1, supportData, brl, minConf)
+		if (len(Hmp1) > 1):
+			rulesFromConseq(freqSet, Hmp1, supportData, brl, minConf)
+
+def getActionIds():
+	actionIdList = []; billTitleList = []
+	fr = open('recent20bills.txt')
+	for line in fr.readlines():
+		billNum = int(line.split('\t')[0])
+		try:
+			billDetail = votesmart.votes.getBill(billNum)
+			for action in billDetail.actions:
+				if action.level == 'House' and (action.stage == 'Passage' or action.stage == 'Amendment Vote'):
+				actionId = int(action.actionId)
+				print 'bill: %d has actionId: %d' % (billNum, actionId)
+				actionIdList.append(actionId)
+				billTitleList.append(line.strip().split('\t')[1])
+		except:
+			print "problem getting bill %d" % billNum
+		sleep(1)
+	return actionIdList, billTitleList
